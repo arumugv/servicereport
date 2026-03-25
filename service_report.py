@@ -13,8 +13,15 @@ class ServiceReportPDF(FPDF):
 
     def header(self):
         if self.logo_data:
-            logo_img = io.BytesIO(self.logo_data.getvalue())
-            self.image(logo_img, 10, 8, 30)
+            # Get the file extension from the uploaded file (e.g., 'png', 'jpg')
+            # default to 'png' if it can't be determined
+            file_ext = self.logo_data.name.split('.')[-1] if hasattr(self.logo_data, 'name') else 'png'
+
+            # Reset the stream pointer to the beginning
+            self.logo_data.seek(0)
+
+            # Pass the stream and specify the type to avoid the rfind error
+            self.image(self.logo_data, x=10, y=8, w=30, type=file_ext)
             self.set_x(45)
 
         self.set_font('Arial', 'B', 15)
