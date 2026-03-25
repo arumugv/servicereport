@@ -130,7 +130,7 @@ def generate_report(data, personnel_df, ra_values, logo_file):
         # Row 2: Supervisor & Client
         start_y = pdf.get_y()
         pdf.set_font('Arial', 'B', 9);
-        pdf.text(10, start_y + 5, "Supervisor / In-charge")
+        pdf.text(10, start_y + 5, "Electrician / Tchnician")
         pdf.line(10, start_y + 25, 90, start_y + 25)
         pdf.set_font('Arial', '', 8);
         pdf.text(10, start_y + 30, "Signature & Date")
