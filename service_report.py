@@ -127,117 +127,114 @@ init_db()
 
 # --- PDF CLASS & GENERATOR ---
 class ServiceReportPDF(FPDF):
-    def __init__(self, logo_path=None):
+    def __init__(self, logo_path="logo.jpeg"):  # Set permanent logo path here
         super().__init__()
         self.logo_path = logo_path
 
     def header(self):
-        if self.logo_path and os.path.exists(self.logo_path):
+        # Check for permanent logo file
+        if os.path.exists(self.logo_path):
             try:
-                self.image(self.logo_path, x=10, y=8, w=30); self.set_x(45)
+                self.image(self.logo_path, x=10, y=8, w=30)
+                self.set_x(45)
             except:
                 pass
+        else:
+            self.set_x(10)  # Fallback if logo file is missing
+
         self.set_font('Arial', 'B', 15)
         self.cell(0, 8, 'PIE PTE LTD', ln=True)
         self.set_font('Arial', '', 8)
-        if self.logo_path: self.set_x(45)
-        self.cell(0, 4, 'UEN: 201634529C', ln=True)
-        if self.logo_path: self.set_x(45)
+        self.set_x(45)
+        self.cell(0, 4, 'UEN: 201634529C', ln=True)  # Permanent UEN inclusion
+        self.set_x(45)
         self.cell(0, 4, 'Address: 1 North Bridge Road, #B1-05A High Street Centre S 179094', ln=True)
-        if self.logo_path: self.set_x(45)
+        self.set_x(45)
         self.cell(0, 4, 'Email: Brian@piesgservice.com | Hp: 92331569', ln=True)
-        self.ln(5);
-        self.set_draw_color(0, 0, 0);
-        self.set_line_width(0.2);
-        self.line(10, 35, 200, 35);
+        self.ln(5)
+        self.set_draw_color(0, 0, 0)
+        self.set_line_width(0.2)
+        self.line(10, 35, 200, 35)
         self.ln(10)
 
     def footer(self):
-        self.set_y(-15);
-        self.set_font('Arial', 'I', 8);
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', align='C')
 
 
-def generate_report(data, personnel_df, ra_values, logo_file):
-    temp_logo_path = None
-    if logo_file:
-        suffix = "." + logo_file.name.split('.')[-1]
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(logo_file.getvalue());
-            temp_logo_path = tmp.name
-    try:
-        pdf = ServiceReportPDF(logo_path=temp_logo_path);
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 14);
-        pdf.cell(0, 10, 'SERVICE REPORT / DOCKET', ln=True, align='C');
-        pdf.ln(5)
-        pdf.set_font('Arial', 'B', 9)
-        fields = [("Report No:", str(data.get('report_no', '')), "Date:", str(data.get('date', ''))),
-                  ("Customer:", str(data.get('customer', '')), "Requestor:", str(data.get('requestor', ''))),
-                  ("Location:", str(data.get('location', '')), "Contact:", str(data.get('contact', '')))]
-        for l1, v1, l2, v2 in fields:
-            pdf.set_font('Arial', 'B', 9);
-            pdf.cell(30, 7, l1)
-            pdf.set_font('Arial', '', 9);
-            pdf.cell(60, 7, v1, border='B')
-            pdf.set_font('Arial', 'B', 9);
-            pdf.cell(30, 7, l2)
-            pdf.set_font('Arial', '', 9);
-            pdf.cell(60, 7, v2, border='B', ln=True)
-        pdf.ln(5);
-        pdf.set_font('Arial', 'B', 10);
-        pdf.cell(0, 8, 'SITE SPECIFIC RISK ASSESSMENT', ln=True)
-        pdf.set_font('Arial', '', 8)
-        ra_items_list = list(ra_values.items())
-        for i in range(0, len(ra_items_list), 4):
-            chunk = ra_items_list[i:i + 4]
-            for key, val in chunk:
-                status = "[X]" if val else "[ ]";
-                pdf.cell(45, 6, f"{status} {key}")
-            pdf.ln()
-        pdf.ln(5);
-        pdf.set_font('Arial', 'B', 10);
-        pdf.cell(0, 8, 'Scope of Work / Description of Tasks', ln=True)
+def generate_report(data, personnel_df, ra_values):
+    # Logo is now handled permanently within the Class
+    pdf = ServiceReportPDF()
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, 'SERVICE REPORT / DOCKET', ln=True, align='C')
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 9)
+    fields = [("Report No:", str(data.get('report_no', '')), "Date:", str(data.get('date', ''))),
+              ("Customer:", str(data.get('customer', '')), "Requestor:", str(data.get('requestor', ''))),
+              ("Location:", str(data.get('location', '')), "Contact:", str(data.get('contact', '')))]
+    for l1, v1, l2, v2 in fields:
+        pdf.set_font('Arial', 'B', 9);
+        pdf.cell(30, 7, l1)
         pdf.set_font('Arial', '', 9);
-        pdf.multi_cell(0, 5, str(data.get('work_description', '')), border=1)
-        pdf.ln(5);
-        pdf.set_font('Arial', 'B', 10);
-        pdf.cell(0, 8, 'Personnel / Hours', ln=True)
-        headers, widths = ['Date', 'Name', 'From', 'To', 'Hrs', 'Remarks'], [25, 45, 20, 20, 15, 65]
-        pdf.set_fill_color(240, 240, 240)
-        for i, h in enumerate(headers): pdf.cell(widths[i], 8, h, border=1, fill=True, align='C')
-        pdf.ln();
-        pdf.set_font('Arial', '', 8)
-        for _, row in personnel_df.iterrows():
-            pdf.cell(widths[0], 7, str(row['Date']), border=1);
-            pdf.cell(widths[1], 7, str(row['Name']), border=1)
-            pdf.cell(widths[2], 7, str(row['From']), border=1);
-            pdf.cell(widths[3], 7, str(row['To']), border=1)
-            pdf.cell(widths[4], 7, str(row['Hrs']), border=1, align='C');
-            pdf.cell(widths[5], 7, str(row['Remarks']), border=1, ln=True)
+        pdf.cell(60, 7, v1, border='B')
+        pdf.set_font('Arial', 'B', 9);
+        pdf.cell(30, 7, l2)
+        pdf.set_font('Arial', '', 9);
+        pdf.cell(60, 7, v2, border='B', ln=True)
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 10);
+    pdf.cell(0, 8, 'SITE SPECIFIC RISK ASSESSMENT', ln=True)
+    pdf.set_font('Arial', '', 8)
+    ra_items_list = list(ra_values.items())
+    for i in range(0, len(ra_items_list), 4):
+        chunk = ra_items_list[i:i + 4]
+        for key, val in chunk:
+            status = "[X]" if val else "[ ]"
+            pdf.cell(45, 6, f"{status} {key}")
+        pdf.ln()
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 10);
+    pdf.cell(0, 8, 'Scope of Work / Description of Tasks', ln=True)
+    pdf.set_font('Arial', '', 9);
+    pdf.multi_cell(0, 5, str(data.get('work_description', '')), border=1)
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 10);
+    pdf.cell(0, 8, 'Personnel / Hours', ln=True)
+    headers, widths = ['Date', 'Name', 'From', 'To', 'Hrs', 'Remarks'], [25, 45, 20, 20, 15, 65]
+    pdf.set_fill_color(240, 240, 240)
+    for i, h in enumerate(headers): pdf.cell(widths[i], 8, h, border=1, fill=True, align='C')
+    pdf.ln()
+    pdf.set_font('Arial', '', 8)
+    for _, row in personnel_df.iterrows():
+        pdf.cell(widths[0], 7, str(row['Date']), border=1)
+        pdf.cell(widths[1], 7, str(row['Name']), border=1)
+        pdf.cell(widths[2], 7, str(row['From']), border=1)
+        pdf.cell(widths[3], 7, str(row['To']), border=1)
+        pdf.cell(widths[4], 7, str(row['Hrs']), border=1, align='C')
+        pdf.cell(widths[5], 7, str(row['Remarks']), border=1, ln=True)
 
-        pdf.ln(10);
-        start_y = pdf.get_y()
-        pdf.set_font('Arial', 'B', 9);
-        pdf.cell(95, 5, "Service Personnel", ln=True)
-        pdf.set_font('Arial', '', 8);
-        pdf.cell(95, 5, "____________________________________", ln=True);
-        pdf.cell(95, 5, "Name / Designation / Date", ln=True)
-        pdf.set_xy(105, start_y);
-        pdf.set_font('Arial', 'B', 9);
-        pdf.cell(95, 5, "CLIENT'S APPROVAL OF WORK", ln=True)
-        pdf.set_x(105);
-        pdf.set_font('Arial', 'I', 7);
-        pdf.multi_cell(95, 3.5, "Work completed to satisfaction. Charges accepted.", align='L');
-        pdf.ln(10)
-        pdf.set_x(105);
-        pdf.set_font('Arial', '', 8);
-        pdf.cell(95, 5, "____________________________________", ln=True);
-        pdf.set_x(105);
-        pdf.cell(95, 5, "Signature & Co Stamp / Date", align='L')
-        return pdf.output(dest='S').encode('latin-1')
-    finally:
-        if temp_logo_path and os.path.exists(temp_logo_path): os.remove(temp_logo_path)
+    pdf.ln(10)
+    start_y = pdf.get_y()
+    pdf.set_font('Arial', 'B', 9);
+    pdf.cell(95, 5, "Service Personnel", ln=True)
+    pdf.set_font('Arial', '', 8);
+    pdf.cell(95, 5, "____________________________________", ln=True);
+    pdf.cell(95, 5, "Name / Designation / Date", ln=True)
+    pdf.set_xy(105, start_y);
+    pdf.set_font('Arial', 'B', 9);
+    pdf.cell(95, 5, "CLIENT'S APPROVAL OF WORK", ln=True)
+    pdf.set_x(105);
+    pdf.set_font('Arial', 'I', 7);
+    pdf.multi_cell(95, 3.5, "Work completed to satisfaction. Charges accepted.", align='L');
+    pdf.ln(10)
+    pdf.set_x(105);
+    pdf.set_font('Arial', '', 8);
+    pdf.cell(95, 5, "____________________________________", ln=True);
+    pdf.set_x(105);
+    pdf.cell(95, 5, "Signature & Co Stamp / Date", align='L')
+    return pdf.output(dest='S').encode('latin-1')
 
 
 # --- STREAMLIT UI ---
@@ -266,7 +263,8 @@ if 'rows' not in st.session_state:
 
 with st.sidebar:
     st.header("Settings")
-    uploaded_logo = st.file_uploader("Upload Company Logo", type=["png", "jpg", "jpeg"])
+    # File uploader removed as requested for permanent logo use
+    st.info("Company Logo is loaded automatically from system files.")
 
     if st.button("🆕 Clear Form / New Report", type="primary", use_container_width=True):
         reset_widget_states()
@@ -282,14 +280,14 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("💾 Drafts")
-    conn = sqlite3.connect('pie_reports.db');
-    drafts_df = pd.read_sql_query("SELECT report_no, customer FROM drafts", conn);
+    conn = sqlite3.connect('pie_reports.db')
+    drafts_df = pd.read_sql_query("SELECT report_no, customer FROM drafts", conn)
     conn.close()
     if not drafts_df.empty:
         selected_draft = st.selectbox("Load a Draft", options=drafts_df['report_no'].tolist())
         if st.button("📂 Load Draft"):
-            conn = sqlite3.connect('pie_reports.db');
-            d = pd.read_sql_query(f"SELECT * FROM drafts WHERE report_no='{selected_draft}'", conn).iloc[0];
+            conn = sqlite3.connect('pie_reports.db')
+            d = pd.read_sql_query(f"SELECT * FROM drafts WHERE report_no='{selected_draft}'", conn).iloc[0]
             conn.close()
             reset_widget_states()
             st.session_state.form_data = {
@@ -298,12 +296,11 @@ with st.sidebar:
                 "location": str(d["location"]), "contact": str(d.get("contact", "")),
                 "work_description": str(d["work_desc"]), "ra_values": json.loads(d["ra_json"])
             }
-            st.session_state.rows = json.loads(d["personnel_json"]);
+            st.session_state.rows = json.loads(d["personnel_json"])
             st.rerun()
 
 with st.expander("📝 1. Job Information", expanded=True):
     col1, col2 = st.columns(2)
-    # Using dynamic keys based on report_no forces Streamlit to refresh the input box
     current_rep = st.session_state.form_data["report_no"]
     with col1:
         report_no = st.text_input("Report No.", value=st.session_state.form_data["report_no"],
@@ -366,8 +363,8 @@ if col_save.button("🚀 Finalize: Generate PDF & Save", use_container_width=Tru
         pdf_bytes = generate_report(
             {"report_no": report_no, "customer": customer, "requestor": requestor, "date": date_input,
              "location": location, "contact": contact, "work_description": work_desc},
-            pd.DataFrame(st.session_state.rows), ra_values, uploaded_logo)
-        st.success("Finalized!");
+            pd.DataFrame(st.session_state.rows), ra_values)
+        st.success("Finalized!")
         st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Report_{report_no}.pdf",
                            mime="application/pdf")
 
@@ -378,7 +375,6 @@ if col_draft.button("💾 Save as Draft", use_container_width=True):
         save_draft(report_no, customer, date_input, location, requestor, contact, work_desc, ra_values,
                    st.session_state.rows); st.info("Draft saved.")
 
-# --- SEARCH & DELETE SECTION ---
 st.markdown("---")
 st.header("📂 Search Finalized History")
 search_term = st.text_input("Search by Report No or Customer Name")
