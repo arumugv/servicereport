@@ -111,12 +111,28 @@ def save_draft(report_no, customer, date, location, requestor, contact, work_des
 def save_report_to_db(report_no, customer, date, location, requestor, contact, work_desc, ra_values, personnel_list):
     conn = sqlite3.connect('pie_reports.db')
     c = conn.cursor()
+
+    # Check if report already exists to prevent duplication
+    c.execute("SELECT id FROM reports WHERE report_no = ?", (report_no,))
+    exists = c.fetchone()
+
     ra_json = json.dumps(ra_values)
     p_json = json.dumps(personnel_list)
-    c.execute('''INSERT INTO reports (report_no, customer, date, location, requestor, contact, work_desc, ra_json,
-                                      personnel_json)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-              (report_no, customer, str(date), location, requestor, contact, work_desc, ra_json, p_json))
+
+    if exists:
+        # Update existing record
+        c.execute('''UPDATE reports
+                     SET customer=?, date=?, location=?, requestor=?, contact=?, 
+                         work_desc=?, ra_json=?, personnel_json=?
+                     WHERE report_no = ?''',
+                  (customer, str(date), location, requestor, contact, work_desc, ra_json, p_json, report_no))
+    else:
+        # Insert new record
+        c.execute('''INSERT INTO reports (report_no, customer, date, location, requestor, contact, work_desc, ra_json,
+                                          personnel_json)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  (report_no, customer, str(date), location, requestor, contact, work_desc, ra_json, p_json))
+
     c.execute("DELETE FROM drafts WHERE report_no = ?", (report_no,))
     conn.commit()
     conn.close()
